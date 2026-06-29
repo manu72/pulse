@@ -7,7 +7,7 @@ import type {
 
 export const dailyBriefing: DailyBriefing = {
   greeting: 'Good morning, Manu.',
-  headline: 'Everything important is visible from here.',
+  headline: 't8 Dashboard',
   summary:
     'Most products are healthy today. Lumo and Little Invites are carrying the strongest demand, while SimTalk and Rateio are worth a closer look before the afternoon check-in.',
   generatedAt: 'Mock briefing for today'

@@ -9,7 +9,9 @@
     "preview": "vite preview",
     "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
     "format": "prettier --write .",
-    "lint": "prettier --check ."
+    "lint": "prettier --check .",
+    "db:migrate": "tsx scripts/migrate.ts",
+    "db:seed": "tsx scripts/migrate.ts && tsx scripts/seed.ts"
   },
   "devDependencies": {
     "@sveltejs/adapter-vercel": "^6.3.4",
@@ -21,7 +23,11 @@
     "svelte": "^5.56.4",
     "svelte-check": "^4.7.1",
     "tailwindcss": "^4.3.1",
+    "tsx": "^4.22.4",
     "typescript": "^6.0.3",
     "vite": "^8.1.0"
+  },
+  "dependencies": {
+    "@libsql/client": "^0.17.4"
   }
 }
