@@ -55,6 +55,12 @@ out/
 build/
 next-env.d.ts
 
+# SvelteKit / Vite
+.svelte-kit/
+dist/
+vite.config.js.timestamp-*
+vite.config.ts.timestamp-*
+
 # Vercel
 .vercel/
 

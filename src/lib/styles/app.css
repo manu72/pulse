@@ -1,0 +1,100 @@
+@import 'tailwindcss';
+
+:root {
+  color-scheme: dark;
+  --color-background: #05060a;
+  --color-surface: #0c0f17;
+  --color-surface-elevated: #121722;
+  --color-surface-muted: #171d2a;
+  --color-border: rgba(255, 255, 255, 0.1);
+  --color-border-strong: rgba(255, 255, 255, 0.18);
+  --color-text: #f7f8fb;
+  --color-text-muted: #a7afc0;
+  --color-text-subtle: #70798d;
+  --color-primary: #7c9cff;
+  --color-primary-strong: #a7bbff;
+  --color-positive: #66d9a5;
+  --color-warning: #ffd166;
+  --color-critical: #ff7a90;
+  --shadow-soft: 0 24px 80px rgba(0, 0, 0, 0.36);
+}
+
+@theme inline {
+  --color-background: var(--color-background);
+  --color-surface: var(--color-surface);
+  --color-surface-elevated: var(--color-surface-elevated);
+  --color-surface-muted: var(--color-surface-muted);
+  --color-border: var(--color-border);
+  --color-border-strong: var(--color-border-strong);
+  --color-text: var(--color-text);
+  --color-text-muted: var(--color-text-muted);
+  --color-text-subtle: var(--color-text-subtle);
+  --color-primary: var(--color-primary);
+  --color-primary-strong: var(--color-primary-strong);
+  --color-positive: var(--color-positive);
+  --color-warning: var(--color-warning);
+  --color-critical: var(--color-critical);
+  --font-sans:
+    Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+    'Segoe UI', sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  background: var(--color-background);
+  scroll-behavior: smooth;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+body {
+  min-height: 100vh;
+  margin: 0;
+  background:
+    radial-gradient(
+      circle at top left,
+      rgba(124, 156, 255, 0.2),
+      transparent 32rem
+    ),
+    radial-gradient(
+      circle at top right,
+      rgba(102, 217, 165, 0.12),
+      transparent 28rem
+    ),
+    var(--color-background);
+  color: var(--color-text);
+  font-family: var(--font-sans);
+  line-height: 1.5;
+  text-rendering: optimizeLegibility;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+button,
+a {
+  -webkit-tap-highlight-color: transparent;
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-primary-strong);
+  outline-offset: 3px;
+}
