@@ -88,9 +88,18 @@ CREATE TABLE ai_summaries (
   summary      TEXT NOT NULL,
   meta         TEXT,                        -- JSON
   created_at   TEXT NOT NULL,
-  UNIQUE(product_id, summary_date, scope)
+  CHECK (
+    (scope = 'company' AND product_id IS NULL)
+    OR (scope = 'product' AND product_id IS NOT NULL)
+  )
 );
 CREATE INDEX idx_ai_summaries_date ON ai_summaries(summary_date);
+CREATE UNIQUE INDEX idx_ai_summaries_company_unique
+  ON ai_summaries(summary_date, scope)
+  WHERE scope = 'company';
+CREATE UNIQUE INDEX idx_ai_summaries_product_unique
+  ON ai_summaries(product_id, summary_date, scope)
+  WHERE scope = 'product';
 
 -- alerts: surfaced exceptions for the dashboard.
 CREATE TABLE alerts (
