@@ -18,7 +18,7 @@
 </svelte:head>
 
 <div class="space-y-8">
-  <DailyBriefing briefing={data.dailyBriefing} />
+  <DailyBriefing briefing={data.dailyBriefing} status={data.briefingStatus} />
   <CompanyMetrics metrics={data.companyMetrics} />
   <ProductHealthGrid products={data.products} />
 

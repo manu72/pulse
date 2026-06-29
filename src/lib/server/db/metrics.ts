@@ -94,3 +94,42 @@ export async function getLatestMetricSnapshots(
   const result = await db.execute({ sql, args });
   return result.rows.map(rowToMetricSnapshot);
 }
+
+export type ProductMetricSnapshot = MetricSnapshot & { productSlug: string };
+
+function rowToProductMetricSnapshot(row: Row): ProductMetricSnapshot {
+  return { ...rowToMetricSnapshot(row), productSlug: String(row.product_slug) };
+}
+
+/**
+ * Latest N snapshots per product for a single metric key, resolved by slug.
+ * One window-function query instead of one per product. Used by the dashboard
+ * to overlay real GA4 numbers onto product cards.
+ */
+export async function getLatestSnapshotsByProductSlugs(
+  slugs: string[],
+  metricKey: string,
+  perProduct = 3
+): Promise<ProductMetricSnapshot[]> {
+  if (!slugs.length) return [];
+  const db = getDb();
+  const placeholders = slugs.map(() => '?').join(',');
+  const args: Array<string | number> = [...slugs, metricKey, perProduct];
+  const sql = `SELECT * FROM (
+      SELECT
+        s.id, s.product_id, s.source_id, s.metric_key, s.metric_value, s.unit,
+        s.period_start, s.period_end, s.dimensions, s.captured_at,
+        p.slug AS product_slug,
+        ROW_NUMBER() OVER (
+          PARTITION BY s.product_id
+          ORDER BY s.period_start DESC, s.captured_at DESC
+        ) AS rn
+      FROM metric_snapshots s
+      JOIN products p ON p.id = s.product_id
+      WHERE p.slug IN (${placeholders}) AND s.metric_key = ?
+    )
+    WHERE rn <= ?
+    ORDER BY product_slug, period_start DESC`;
+  const result = await db.execute({ sql, args });
+  return result.rows.map(rowToProductMetricSnapshot);
+}
