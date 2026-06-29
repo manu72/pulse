@@ -85,7 +85,7 @@ for (const [index, product] of products.entries()) {
       ON CONFLICT(product_id, source) DO UPDATE SET
         display_name = excluded.display_name,
         is_active = excluded.is_active,
-        config = excluded.config`,
+        config = COALESCE(metric_sources.config, excluded.config)`,
     args: [
       randomUUID(),
       productId,

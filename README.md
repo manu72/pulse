@@ -160,7 +160,7 @@ This applies every `migrations/*.sql` file in order and records each in a `_migr
 npm run db:seed
 ```
 
-This runs migrations (if needed), then upserts the current Pulse product list into the `products` table by slug, using `src/lib/mock/products.ts` as the source of truth. It also creates an active `GA4` `metric_sources` row per product with a placeholder `ga4PropertyId` — **replace these placeholders with real GA4 property IDs before running ingestion** (see [GA4 Ingestion](#ga4-ingestion-google-analytics)). Safe to run repeatedly.
+This runs migrations (if needed), then upserts the current Pulse product list into the `products` table by slug, using `src/lib/mock/products.ts` as the source of truth. It also creates an active `GA4` `metric_sources` row per product with a placeholder `ga4PropertyId` when no config exists yet — **replace these placeholders with real GA4 property IDs before running ingestion** (see [GA4 Ingestion](#ga4-ingestion-google-analytics)). Safe to run repeatedly; existing `metric_sources.config` JSON is preserved.
 
 ## GA4 Ingestion (Google Analytics)
 
@@ -176,7 +176,7 @@ SET config = json_set(config, '$.ga4PropertyId', '123456789')
 WHERE product_id = (SELECT id FROM products WHERE slug = 'little-invites');
 ```
 
-(Or edit the placeholders in `scripts/seed.ts` and re-run `npm run db:seed`.)
+Re-running `npm run db:seed` preserves existing config JSON, so use an `UPDATE` like the one above to change GA4 property IDs for existing products.
 
 ### 2. Configure service-account credentials
 
