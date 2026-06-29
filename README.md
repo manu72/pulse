@@ -22,7 +22,7 @@ Open the dashboard.
 
 Look for five seconds.
 
-Know exactly what’s happening.
+Know exactly what's happening.
 
 ## Principles
 
@@ -36,15 +36,16 @@ Know exactly what’s happening.
 
 ## Status
 
-Initial scaffold only.
+Initial scaffold + database foundation.
 
-This milestone is a static/mock SvelteKit dashboard shell. It does not connect to GA4, Vercel, Cloud Run, Firebase, Supabase or any production analytics source yet.
+The dashboard runs on mock data by default. The Turso/libSQL storage layer is in place: when the database is configured, the `products` table is the source of truth for the product list, with an automatic mock fallback. Pulse still does not connect to GA4, Vercel, Cloud Run, Firebase, Supabase or any production analytics source yet.
 
 ## Tech Stack
 
 - SvelteKit
 - TypeScript
 - Tailwind CSS
+- Turso / libSQL (database foundation)
 - Vercel hosting
 - Supabase later
 - Server-side aggregation later
@@ -77,6 +78,59 @@ Build for production:
 npm run build
 ```
 
+## Database (Turso / libSQL)
+
+Pulse uses **Turso / libSQL** for its storage foundation. libSQL is the open-source SQLite fork Turso is built on, so the schema stays simple (text IDs, ISO date strings, JSON-in-TEXT columns) and runs identically on a local file or a managed Turso database. This stage adds the database layer only — there is no ORM, no auth, and no analytics ingestion yet.
+
+### Why Turso / libSQL
+
+- SQLite-familiar SQL: boring and easy for future contributors and AI assistants to extend.
+- One client (`@libsql/client`) works for local file development and remote Turso.
+- Edge-friendly and server-side only — credentials never reach the browser.
+
+### Required environment variables
+
+Copy `.env.example` to `.env` and set:
+
+```bash
+# Local file database (no token needed):
+TURSO_DATABASE_URL=file:./local.db
+
+# Remote Turso:
+TURSO_DATABASE_URL=libsql://<your-db>.turso.io
+TURSO_AUTH_TOKEN=<your-token>
+```
+
+If both are unset, the app continues to run on mock data and will not crash.
+
+### Run migrations
+
+```bash
+npm run db:migrate
+```
+
+This applies every `migrations/*.sql` file in order and records each in a `_migrations` table, so it is safe to run repeatedly.
+
+### Seed products
+
+```bash
+npm run db:seed
+```
+
+This runs migrations (if needed), then upserts the current Pulse product list into the `products` table by slug, using `src/lib/mock/products.ts` as the source of truth. Safe to run repeatedly.
+
+### What is still mocked
+
+- Company metrics, daily briefing, recent activity and alerts still come from `src/lib/mock`.
+- Metric snapshots, daily rollups, ingestion runs and AI summaries have tables and repository helpers but no data yet (no GA4 or AI wiring).
+- If the database is empty or unavailable, products also fall back to mock data.
+
+### What comes next
+
+- Wire `products/[slug]` and the rest of the dashboard to the database.
+- Add ingestion runs that write real metric snapshots (GA4, Vercel, etc.).
+- Generate daily rollups and AI briefings into their tables.
+
 ## Project Structure
 
 ```text
@@ -91,7 +145,7 @@ src/
     server/
       ai/            Future server-only AI summary boundary.
       connectors/    Future external service connector contracts.
-      db/            Future Supabase server client boundary.
+      db/            Turso/libSQL server-only client and repositories.
     styles/          Global Tailwind and design tokens.
     types/           Shared domain types.
   routes/
@@ -99,6 +153,8 @@ src/
     +page.svelte
     products/[slug]/+page.svelte
     settings/+page.svelte
+migrations/          Numbered SQL migration files applied by scripts/migrate.ts.
+scripts/             Standalone tsx scripts: migrate.ts and seed.ts.
 ```
 
 ## Mock Products
@@ -114,13 +170,14 @@ The scaffold includes placeholders for:
 - SolarSim
 - Lumo
 
-Each mock product includes name, slug, URL, status, visitor count, visitor trend, conversion rate, top channel, health summary, last deploy and service health rows.
+Each mock product includes name, slug, URL, status, visitor count, visitor trend, conversion rate, top channel, health summary, last deploy and service health rows. These are also the seed values written to the `products` table.
 
 ## Architecture Notes
 
 - Routes use SvelteKit SSR/load patterns so future server aggregation can replace mock data without changing page components heavily.
 - Mock data lives in `src/lib/mock` and should be treated as a temporary local data source.
 - External data boundaries live under `src/lib/server`, keeping future credentials and API calls server-only.
+- Database access is server-only under `src/lib/server/db`; if `TURSO_DATABASE_URL` is unset the app falls back to mock data.
 - Connector files currently return placeholder health states and should not call real services until a later milestone.
 - Styling uses semantic CSS color tokens in `src/lib/styles/app.css` with Tailwind utilities for layout.
 
