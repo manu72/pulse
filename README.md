@@ -1,12 +1,38 @@
 # Pulse
 
+Executive dashboard for monitoring the health of digital products. Your company's digital pulse at a glance.
+
 Pulse is a premium, mobile-friendly executive dashboard for monitoring the health of Throwing Eights websites, apps and cloud services.
 
-It is not a generic analytics clone. Pulse is designed to feel like a calm company command centre: fast, polished and useful at a glance.
+It is not a generic analytics clone. Pulse is designed to feel like a calm company command centre: fast, polished and useful at a glance. An elegant dashboard that works as well on a phone as it does on a desktop.
 
-The homepage should eventually answer one question:
+Google Analytics, Vercel, Cloud Run, Firebase, Supabase, GitHub, Stripe and other services all become inputs into a single executive view designed to answer one simple question:
 
-> Good morning. How is the business doing right now?
+How is the business doing right now?
+
+## Vision
+
+Most dashboards are built for analysts.
+
+Pulse is built for founders.
+
+The goal is not to expose every metric available, but to surface the handful of insights that actually matter.
+
+Open the dashboard.
+
+Look for five seconds.
+
+Know exactly what’s happening.
+
+## Principles
+
+- Beautiful by default.
+- Mobile first.
+- Executive summaries before detailed reports.
+- Data from many sources, presented as one.
+- Fast enough to check dozens of times a day.
+- AI should explain, not overwhelm.
+- Design is a feature.
 
 ## Status
 
