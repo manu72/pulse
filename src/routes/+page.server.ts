@@ -43,13 +43,20 @@ function toBriefing(summary: AISummary): DailyBriefing {
   };
 }
 
+function todayIso(): string {
+  return new Date().toISOString().slice(0, 10);
+}
+
 async function loadBriefing(): Promise<{
   briefing: DailyBriefing;
   status: BriefingStatus;
 }> {
   if (!isDbConfigured()) return { briefing: mockBriefing, status: 'mock' };
   try {
-    const summary = await getLatestAISummary({ scope: 'company' });
+    const summary = await getLatestAISummary({
+      scope: 'company',
+      summaryDate: todayIso()
+    });
     if (!summary) return { briefing: EMPTY_BRIEFING, status: 'empty' };
     return { briefing: toBriefing(summary), status: 'live' };
   } catch {
