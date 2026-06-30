@@ -11,7 +11,8 @@
     "format": "prettier --write .",
     "lint": "prettier --check .",
     "db:migrate": "tsx scripts/migrate.ts",
-    "db:seed": "tsx scripts/migrate.ts && tsx scripts/seed.ts"
+    "db:seed": "tsx scripts/migrate.ts && tsx scripts/seed.ts",
+    "ingest:ga4": "tsx scripts/ingest-ga4.ts"
   },
   "devDependencies": {
     "@sveltejs/adapter-vercel": "^6.3.4",
@@ -28,6 +29,8 @@
     "vite": "^8.1.0"
   },
   "dependencies": {
-    "@libsql/client": "^0.17.4"
+    "@google-analytics/data": "^6.1.0",
+    "@libsql/client": "^0.17.4",
+    "openai": "^6.45.0"
   }
 }
