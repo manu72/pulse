@@ -165,6 +165,40 @@ export async function getRollupsForDate(
   }));
 }
 
+export type ProductRollupDate = {
+  productSlug: string;
+  rollupDate: string;
+};
+
+/** Product rollups for per-product local calendar dates. */
+export async function getRollupsForProductSlugDates(
+  dates: ProductRollupDate[]
+): Promise<CompanyRollup[]> {
+  if (!dates.length) return [];
+  const db = getDb();
+  const where = dates
+    .map(() => '(p.slug = ? AND r.rollup_date = ?)')
+    .join(' OR ');
+  const args = dates.flatMap(({ productSlug, rollupDate }) => [
+    productSlug,
+    rollupDate
+  ]);
+  const result = await db.execute({
+    sql: `SELECT r.*, p.slug AS product_slug, p.name AS product_name, p.status AS product_status
+      FROM daily_product_rollups r
+      JOIN products p ON p.id = r.product_id
+      WHERE ${where}
+      ORDER BY p.name COLLATE NOCASE ASC`,
+    args
+  });
+  return result.rows.map((row) => ({
+    ...rowToDailyRollup(row),
+    productSlug: String(row.product_slug),
+    productName: String(row.product_name),
+    productStatus: String(row.product_status)
+  }));
+}
+
 export type NewAISummary = {
   productId: string | null;
   scope: 'company' | 'product';

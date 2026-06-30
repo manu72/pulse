@@ -1,7 +1,15 @@
 import OpenAI from 'openai';
 import { env } from '$env/dynamic/private';
-import { getRollupsForDate, saveAISummary } from '../db/summaries';
+import {
+  getRollupsForDate,
+  getRollupsForProductSlugDates,
+  saveAISummary
+} from '../db/summaries';
 import type { CompanyRollup } from '../db/summaries';
+import {
+  chooseCompanySummaryDate,
+  getCurrentGA4ProductRollupDates
+} from '../summary-date';
 
 export type GeneratedBriefing = {
   greeting: string;
@@ -24,10 +32,6 @@ Write a calm, concise, founder-friendly daily briefing. Rules:
   "greeting" (string), "headline" (string, one line), "summary" (string, 2-4 sentences),
   "overallStatus" (string), "notableChanges" (string[]), "productHighlights" (string[]),
   "risks" (string[]), "suggestedAction" (string, one concrete next step).`;
-
-function todayIso(): string {
-  return new Date().toISOString().slice(0, 10);
-}
 
 function buildPayload(rollups: CompanyRollup[], date: string): string {
   if (!rollups.length) {
@@ -67,13 +71,21 @@ function normalize(raw: Record<string, unknown>): GeneratedBriefing {
  * so callers can surface an empty state without spending an AI call.
  */
 export async function generateDailyBriefing(
-  date = todayIso()
+  date?: string
 ): Promise<GeneratedBriefing | null> {
   if (!env.OPENAI_API_KEY) {
     throw new Error('OPENAI_API_KEY is not set');
   }
 
-  const rollups = await getRollupsForDate(date);
+  const rollupDates = date ? [] : await getCurrentGA4ProductRollupDates();
+  const summaryDate =
+    date ??
+    chooseCompanySummaryDate(
+      rollupDates.map((rollupDate) => rollupDate.rollupDate)
+    );
+  const rollups = date
+    ? await getRollupsForDate(date)
+    : await getRollupsForProductSlugDates(rollupDates);
   if (!rollups.length) {
     return null;
   }
@@ -87,7 +99,7 @@ export async function generateDailyBriefing(
     response_format: { type: 'json_object' },
     messages: [
       { role: 'system', content: SYSTEM_PROMPT },
-      { role: 'user', content: buildPayload(rollups, date) }
+      { role: 'user', content: buildPayload(rollups, summaryDate) }
     ]
   });
 
@@ -97,7 +109,7 @@ export async function generateDailyBriefing(
   await saveAISummary({
     productId: null,
     scope: 'company',
-    summaryDate: date,
+    summaryDate,
     greeting: briefing.greeting,
     headline: briefing.headline,
     summary: briefing.summary,

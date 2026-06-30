@@ -1,6 +1,11 @@
 import { BetaAnalyticsDataClient } from '@google-analytics/data';
 import { randomUUID } from 'node:crypto';
 import type { Client } from '@libsql/client';
+import {
+  DEFAULT_TIME_ZONE,
+  currentDateInTimeZone,
+  shiftCalendarDays
+} from '../dates';
 import { jsonStringify } from '../db/json';
 
 // Self-contained GA4 ingestion: takes an injected db client and credentials so
@@ -65,26 +70,16 @@ type Period = {
   end: string;
 };
 
-function isoDate(d: Date): string {
-  return d.toISOString().slice(0, 10);
-}
-
-function shiftDays(iso: string, days: number): string {
-  const d = new Date(`${iso}T00:00:00Z`);
-  d.setUTCDate(d.getUTCDate() + days);
-  return isoDate(d);
-}
-
-function buildPeriods(): Period[] {
-  const today = isoDate(new Date());
+function buildPeriods(timeZone: string, now: Date): Period[] {
+  const today = currentDateInTimeZone(timeZone, now);
   return [
     { key: 'today', start: today, end: today },
     {
       key: 'yesterday',
-      start: shiftDays(today, -1),
-      end: shiftDays(today, -1)
+      start: shiftCalendarDays(today, -1),
+      end: shiftCalendarDays(today, -1)
     },
-    { key: 'last7', start: shiftDays(today, -6), end: today }
+    { key: 'last7', start: shiftCalendarDays(today, -6), end: today }
   ];
 }
 
@@ -166,9 +161,8 @@ export async function runGA4Ingestion(
   input: GA4IngestionInput
 ): Promise<GA4IngestionResult> {
   const { db, credentials } = input;
-  const startedAt = new Date().toISOString();
-  const periods = buildPeriods();
-  const today = periods[0].start;
+  const startedAtDate = new Date();
+  const startedAt = startedAtDate.toISOString();
   const client = new BetaAnalyticsDataClient(credentials);
 
   // ponytail: one GA4 report per period/dimension keeps parsing unambiguous.
@@ -204,6 +198,9 @@ export async function runGA4Ingestion(
 
     try {
       const property = `properties/${propertyId}`;
+      const timeZone = config?.timezone || DEFAULT_TIME_ZONE;
+      const periods = buildPeriods(timeZone, startedAtDate);
+      const today = periods[0].start;
       const byPeriod: Record<string, MetricValues> = {};
       for (const period of periods) {
         byPeriod[period.key] = await fetchMetrics(client, property, period);
@@ -236,7 +233,7 @@ export async function runGA4Ingestion(
         averageSessionDurationToday: todayVals.average_session_duration,
         topChannel,
         topPage,
-        timezone: config?.timezone ?? null
+        timezone: timeZone
       };
 
       type Statement = {

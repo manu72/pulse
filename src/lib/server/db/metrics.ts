@@ -102,9 +102,8 @@ function rowToProductMetricSnapshot(row: Row): ProductMetricSnapshot {
 }
 
 /**
- * Latest N snapshots per product for a single metric key, resolved by slug.
- * One window-function query instead of one per product. Used by the dashboard
- * to overlay real GA4 numbers onto product cards.
+ * Latest N distinct snapshot periods per product for a single metric key,
+ * resolved by slug. Used by the dashboard to overlay real GA4 numbers.
  */
 export async function getLatestSnapshotsByProductSlugs(
   slugs: string[],
@@ -115,19 +114,32 @@ export async function getLatestSnapshotsByProductSlugs(
   const db = getDb();
   const placeholders = slugs.map(() => '?').join(',');
   const args: Array<string | number> = [...slugs, metricKey, perProduct];
-  const sql = `SELECT * FROM (
+  const sql = `WITH latest_periods AS (
       SELECT
         s.id, s.product_id, s.source_id, s.metric_key, s.metric_value, s.unit,
         s.period_start, s.period_end, s.dimensions, s.captured_at,
         p.slug AS product_slug,
         ROW_NUMBER() OVER (
-          PARTITION BY s.product_id
-          ORDER BY s.period_start DESC, s.captured_at DESC
-        ) AS rn
+          PARTITION BY s.product_id, s.period_start, s.period_end
+          ORDER BY s.captured_at DESC
+        ) AS period_rn
       FROM metric_snapshots s
       JOIN products p ON p.id = s.product_id
       WHERE p.slug IN (${placeholders}) AND s.metric_key = ?
+    ),
+    ranked AS (
+      SELECT
+        id, product_id, source_id, metric_key, metric_value, unit,
+        period_start, period_end, dimensions, captured_at, product_slug,
+        ROW_NUMBER() OVER (
+          PARTITION BY product_id
+          ORDER BY period_start DESC, captured_at DESC
+        ) AS rn
+      FROM latest_periods
+      WHERE period_rn = 1
     )
+    SELECT *
+    FROM ranked
     WHERE rn <= ?
     ORDER BY product_slug, period_start DESC`;
   const result = await db.execute({ sql, args });

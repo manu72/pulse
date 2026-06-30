@@ -1,16 +1,29 @@
 import { isDbConfigured } from './db/client';
+import { listActiveGA4SourceConfigs } from './db/metric-sources';
 import { getLatestSnapshotsByProductSlugs } from './db/metrics';
-import { getRollupsForSlugsAndDate } from './db/summaries';
+import { getRollupsForProductSlugDates } from './db/summaries';
+import {
+  DEFAULT_TIME_ZONE,
+  currentDateInTimeZone,
+  shiftCalendarDays
+} from './dates';
 import type { Product } from '$lib/types/product';
 
-function isoDate(d: Date): string {
-  return d.toISOString().slice(0, 10);
-}
+type ProductCalendar = {
+  today: string;
+  yesterday: string;
+};
 
-function shiftDays(iso: string, days: number): string {
-  const d = new Date(`${iso}T00:00:00Z`);
-  d.setUTCDate(d.getUTCDate() + days);
-  return isoDate(d);
+function calendarForTimeZone(
+  timeZone: string,
+  now: Date
+): ProductCalendar | null {
+  try {
+    const today = currentDateInTimeZone(timeZone, now);
+    return { today, yesterday: shiftCalendarDays(today, -1) };
+  } catch {
+    return null;
+  }
 }
 
 /**
@@ -24,23 +37,45 @@ export async function hydrateProductMetrics(
   if (!isDbConfigured() || products.length === 0) return products;
 
   const slugs = products.map((p) => p.slug);
-  const today = isoDate(new Date());
-  const yesterday = shiftDays(today, -1);
+  const now = new Date();
 
   try {
-    const [snapshots, rollups] = await Promise.all([
+    const [snapshots, sourceConfigs] = await Promise.all([
       getLatestSnapshotsByProductSlugs(slugs, 'active_users', 2),
-      getRollupsForSlugsAndDate(slugs, today)
+      listActiveGA4SourceConfigs(slugs)
     ]);
+    const defaultCalendar = calendarForTimeZone(DEFAULT_TIME_ZONE, now);
+    const calendarBySlug = new Map<string, ProductCalendar | null>(
+      products.map((product) => [product.slug, defaultCalendar])
+    );
+    for (const sourceConfig of sourceConfigs) {
+      calendarBySlug.set(
+        sourceConfig.productSlug,
+        calendarForTimeZone(sourceConfig.timezone || DEFAULT_TIME_ZONE, now)
+      );
+    }
+
+    const rollups = await getRollupsForProductSlugDates(
+      products.flatMap((product) => {
+        const calendar = calendarBySlug.get(product.slug);
+        return calendar
+          ? [{ productSlug: product.slug, rollupDate: calendar.today }]
+          : [];
+      })
+    );
 
     const usersBySlug = new Map<
       string,
       { today?: number; yesterday?: number }
     >();
     for (const s of snapshots) {
+      const calendar = calendarBySlug.get(s.productSlug);
+      if (!calendar) continue;
       const entry = usersBySlug.get(s.productSlug) ?? {};
-      if (s.periodStart === today) entry.today = s.metricValue;
-      else if (s.periodStart === yesterday) entry.yesterday = s.metricValue;
+      if (s.periodStart === calendar.today) entry.today = s.metricValue;
+      else if (s.periodStart === calendar.yesterday) {
+        entry.yesterday = s.metricValue;
+      }
       usersBySlug.set(s.productSlug, entry);
     }
 

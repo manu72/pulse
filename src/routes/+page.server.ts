@@ -9,6 +9,7 @@ import { isDbConfigured } from '$lib/server/db/client';
 import { listProducts } from '$lib/server/db/products';
 import { getLatestAISummary, type AISummary } from '$lib/server/db/summaries';
 import { hydrateProductMetrics } from '$lib/server/dashboard';
+import { getCurrentCompanySummaryDate } from '$lib/server/summary-date';
 import type { DailyBriefing } from '$lib/types/overview';
 import type { PageServerLoad } from './$types';
 
@@ -43,19 +44,16 @@ function toBriefing(summary: AISummary): DailyBriefing {
   };
 }
 
-function todayIso(): string {
-  return new Date().toISOString().slice(0, 10);
-}
-
 async function loadBriefing(): Promise<{
   briefing: DailyBriefing;
   status: BriefingStatus;
 }> {
   if (!isDbConfigured()) return { briefing: mockBriefing, status: 'mock' };
   try {
+    const summaryDate = await getCurrentCompanySummaryDate();
     const summary = await getLatestAISummary({
       scope: 'company',
-      summaryDate: todayIso()
+      summaryDate
     });
     if (!summary) return { briefing: EMPTY_BRIEFING, status: 'empty' };
     return { briefing: toBriefing(summary), status: 'live' };
